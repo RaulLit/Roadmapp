@@ -46,6 +46,12 @@ export default function RootLayout() {
             title: 'Roadmap Details',
           }}
         />
+        <Stack.Screen
+          name="roadmap/[id]/edit"
+          options={{
+            title: 'Edit Roadmap',
+          }}
+        />
       </Stack>
     </GestureHandlerRootView>
   );

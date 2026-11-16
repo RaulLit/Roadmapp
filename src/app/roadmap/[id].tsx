@@ -1,39 +1,38 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   View,
   Text,
-  TextInput,
   TouchableOpacity,
   ScrollView,
   StyleSheet,
-  Alert,
   ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
-  Keyboard,
+  useWindowDimensions,
 } from 'react-native';
-import { useLocalSearchParams, useNavigation } from 'expo-router';
+import { useLocalSearchParams, useRouter, useNavigation } from 'expo-router';
 import { useRoadmapStore } from '../../store/useRoadmapStore';
+import { MilestoneTile } from '../../components/MilestoneTile';
+import { PathConnector } from '../../components/PathConnector';
+import { MilestonePopover } from '../../components/MilestonePopover';
 
 export default function RoadmapDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const router = useRouter();
   const navigation = useNavigation();
-  const scrollViewRef = useRef<React.ElementRef<typeof ScrollView>>(null);
-  const milestoneLayouts = useRef<Record<string, number>>({});
+  const { width: screenWidth } = useWindowDimensions();
 
-  const [milestoneTitle, setMilestoneTitle] = useState('');
-  const [taskInputs, setTaskInputs] = useState<Record<string, string>>({});
-  const [keyboardHeight, setKeyboardHeight] = useState(0);
+  const [selectedMilestoneId, setSelectedMilestoneId] = useState<string | null>(null);
+  const [selectedTilePos, setSelectedTilePos] = useState<{
+    pageX: number;
+    pageY: number;
+    width: number;
+    height: number;
+  } | null>(null);
 
   const {
     currentRoadmap,
     isLoading,
     loadRoadmap,
-    addMilestone,
-    removeMilestone,
-    addTask,
     toggleTask,
-    removeTask,
   } = useRoadmapStore();
 
   useEffect(() => {
@@ -43,74 +42,19 @@ export default function RoadmapDetailScreen() {
   }, [id, loadRoadmap]);
 
   useEffect(() => {
-    if (currentRoadmap?.title) {
-      navigation.setOptions({ title: currentRoadmap.title });
-    }
-  }, [currentRoadmap?.title, navigation]);
-
-  useEffect(() => {
-    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
-    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
-
-    const showSub = Keyboard.addListener(showEvent, (e) => {
-      setKeyboardHeight(e.endCoordinates.height);
+    navigation.setOptions({
+      title: currentRoadmap?.title || 'Roadmap',
+      headerRight: () => (
+        <TouchableOpacity
+          onPress={() => router.push(`/roadmap/${id}/edit` as any)}
+          style={styles.editHeaderBtn}
+          activeOpacity={0.7}
+        >
+          <Text style={styles.editHeaderBtnText}>Edit</Text>
+        </TouchableOpacity>
+      ),
     });
-    const hideSub = Keyboard.addListener(hideEvent, () => {
-      setKeyboardHeight(0);
-    });
-
-    return () => {
-      showSub.remove();
-      hideSub.remove();
-    };
-  }, []);
-
-  const handleAddMilestone = () => {
-    if (!milestoneTitle.trim() || !id) return;
-    addMilestone(id, milestoneTitle.trim());
-    setMilestoneTitle('');
-  };
-
-  const handleDeleteMilestone = (milestoneId: string, name: string) => {
-    if (!id) return;
-    Alert.alert(
-      'Delete Milestone',
-      `Delete "${name}" and all its tasks?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: () => removeMilestone(id, milestoneId),
-        },
-      ]
-    );
-  };
-
-  const handleAddTask = (milestoneId: string) => {
-    const text = taskInputs[milestoneId];
-    if (!text || !text.trim() || !id) return;
-    addTask(id, milestoneId, text.trim());
-    setTaskInputs((prev) => ({ ...prev, [milestoneId]: '' }));
-  };
-
-  const handleDeleteTask = (taskId: string) => {
-    if (!id) return;
-    removeTask(id, taskId);
-  };
-
-  const handleTaskInputFocus = (milestoneId: string) => {
-    const y = milestoneLayouts.current[milestoneId];
-    if (typeof y === 'number') {
-      // Delay slightly so layout and keyboard animation adjust first
-      setTimeout(() => {
-        scrollViewRef.current?.scrollTo({
-          y: Math.max(0, y - 16),
-          animated: true,
-        });
-      }, 100);
-    }
-  };
+  }, [currentRoadmap?.title, id, navigation, router]);
 
   if (isLoading && !currentRoadmap) {
     return (
@@ -128,397 +72,192 @@ export default function RoadmapDetailScreen() {
     );
   }
 
+  const milestones = currentRoadmap.milestones;
+  const selectedMilestone = milestones.find((m) => m.id === selectedMilestoneId) || null;
+
+  // Compute winding path geometry
+  const centerX = screenWidth / 2;
+  const horizontalAmp = Math.min(screenWidth * 0.28, 85);
+  const NODE_SPACING_Y = 145;
+  const START_Y = 50;
+  const TILE_RADIUS_OFFSET = 46; // Half of 92px tile size
+
+  const nodePositions = milestones.map((_, i) => {
+    const x = centerX + Math.sin(i * 1.15) * horizontalAmp;
+    const y = START_Y + i * NODE_SPACING_Y;
+    return { x, y };
+  });
+
+  const totalContentHeight = START_Y + milestones.length * NODE_SPACING_Y + 120;
+
   return (
-    <KeyboardAvoidingView
-      style={styles.keyboardAvoidingView}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
-    >
-      <ScrollView
-        ref={scrollViewRef}
-        style={styles.container}
-        contentContainerStyle={[
-          styles.content,
-          { paddingBottom: keyboardHeight > 0 ? keyboardHeight + 80 : 80 },
-        ]}
-        keyboardShouldPersistTaps="handled"
-        keyboardDismissMode="on-drag"
-        automaticallyAdjustKeyboardInsets={Platform.OS === 'ios'}
-      >
-        {/* Add Milestone Section */}
-        <View style={styles.addMilestoneCard}>
-          <Text style={styles.sectionHeader}>Add Milestone</Text>
-          <View style={styles.inputRow}>
-            <TextInput
-              style={styles.input}
-              placeholder="e.g. Phase 1: Core Fundamentals"
-              placeholderTextColor="#9ca3af"
-              value={milestoneTitle}
-              onChangeText={setMilestoneTitle}
-              onSubmitEditing={handleAddMilestone}
-              returnKeyType="done"
-            />
-            <TouchableOpacity
-              style={[styles.primaryButton, !milestoneTitle.trim() && styles.buttonDisabled]}
-              onPress={handleAddMilestone}
-              disabled={!milestoneTitle.trim()}
-            >
-              <Text style={styles.primaryButtonText}>Add</Text>
-            </TouchableOpacity>
-          </View>
+    <View style={styles.screenWrapper}>
+      {milestones.length === 0 ? (
+        <View style={styles.emptyContainer}>
+          <Text style={styles.emptyIcon}>🗺️</Text>
+          <Text style={styles.emptyTitle}>Start Your Journey</Text>
+          <Text style={styles.emptyDescription}>
+            Build your custom milestones and tasks to explore your interactive Duolingo-style path.
+          </Text>
+          <TouchableOpacity
+            style={styles.buildBtn}
+            activeOpacity={0.8}
+            onPress={() => router.push(`/roadmap/${id}/edit` as any)}
+          >
+            <Text style={styles.buildBtnText}>+ Build Roadmap</Text>
+          </TouchableOpacity>
         </View>
+      ) : (
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={[styles.scrollContent, { height: Math.max(totalContentHeight, 600) }]}
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Sinuous Path Connectors linking consecutive milestone nodes */}
+          {nodePositions.map((pos, i) => {
+            if (i === nodePositions.length - 1) return null;
+            const nextPos = nodePositions[i + 1];
+            return (
+              <PathConnector
+                key={`connector-${i}`}
+                fromX={pos.x}
+                fromY={pos.y + 40}
+                toX={nextPos.x}
+                toY={nextPos.y + 40}
+              />
+            );
+          })}
 
-        {/* Tree Hierarchy Section */}
-        <Text style={styles.treeSectionTitle}>Roadmap Tree</Text>
-
-        {currentRoadmap.milestones.length === 0 ? (
-          <View style={styles.emptyMilestonesBox}>
-            <Text style={styles.emptyText}>No milestones yet.</Text>
-            <Text style={styles.emptySubtext}>Add a milestone above to start your roadmap structure.</Text>
-          </View>
-        ) : (
-          currentRoadmap.milestones.map((milestone, mIndex) => {
-            const completedCount = milestone.tasks.filter((t) => t.is_completed).length;
-            const currentTaskInput = taskInputs[milestone.id] || '';
+          {/* Circular Milestone Tiles with Segmented Circumference Progress */}
+          {milestones.map((milestone, i) => {
+            const pos = nodePositions[i];
+            const isFirstIncomplete =
+              milestones.findIndex((m) => m.tasks.some((t) => !t.is_completed)) === i;
 
             return (
               <View
                 key={milestone.id}
-                style={styles.milestoneBlock}
-                onLayout={(event) => {
-                  milestoneLayouts.current[milestone.id] = event.nativeEvent.layout.y;
-                }}
+                style={[
+                  styles.tileAbsoluteContainer,
+                  {
+                    left: pos.x - TILE_RADIUS_OFFSET,
+                    top: pos.y,
+                  },
+                ]}
               >
-                {/* Milestone Header Node */}
-                <View style={styles.milestoneNode}>
-                  <View style={styles.milestoneLabelGroup}>
-                    <Text style={styles.milestoneIndexBadge}>#{mIndex + 1}</Text>
-                    <Text style={styles.milestoneTitle}>{milestone.title}</Text>
-                  </View>
-                  <View style={styles.milestoneActions}>
-                    <Text style={styles.milestoneStats}>
-                      {completedCount}/{milestone.tasks.length}
-                    </Text>
-                    <TouchableOpacity
-                      style={styles.deleteMilestoneButton}
-                      onPress={() => handleDeleteMilestone(milestone.id, milestone.title)}
-                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                    >
-                      <Text style={styles.deleteButtonText}>✕</Text>
-                    </TouchableOpacity>
-                  </View>
-                </View>
-
-                {/* Nested Tasks Container */}
-                <View style={styles.tasksContainer}>
-                  {/* List Tasks in Tree */}
-                  {milestone.tasks.length > 0 ? (
-                    milestone.tasks.map((task) => (
-                      <View key={task.id} style={styles.taskNode}>
-                        <Text style={styles.treeBranchLine}>└──</Text>
-                        <TouchableOpacity
-                          style={[styles.checkbox, task.is_completed && styles.checkboxChecked]}
-                          onPress={() => toggleTask(id!, task.id, task.is_completed)}
-                          activeOpacity={0.7}
-                        >
-                          {task.is_completed && <Text style={styles.checkmark}>✓</Text>}
-                        </TouchableOpacity>
-                        <Text
-                          style={[styles.taskTitle, task.is_completed && styles.taskTitleCompleted]}
-                          numberOfLines={2}
-                        >
-                          {task.title}
-                        </Text>
-                        <TouchableOpacity
-                          style={styles.deleteTaskButton}
-                          onPress={() => handleDeleteTask(task.id)}
-                          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                        >
-                          <Text style={styles.deleteTaskText}>✕</Text>
-                        </TouchableOpacity>
-                      </View>
-                    ))
-                  ) : (
-                    <View style={styles.noTasksRow}>
-                      <Text style={styles.treeBranchLine}>└──</Text>
-                      <Text style={styles.noTasksText}>No tasks yet in this milestone</Text>
-                    </View>
-                  )}
-
-                  {/* Add Task Input Row nested under milestone */}
-                  <View style={styles.addTaskRow}>
-                    <Text style={styles.treeBranchLine}>└──</Text>
-                    <TextInput
-                      style={styles.taskInput}
-                      placeholder="Add task to milestone..."
-                      placeholderTextColor="#9ca3af"
-                      value={currentTaskInput}
-                      onChangeText={(val) =>
-                        setTaskInputs((prev) => ({ ...prev, [milestone.id]: val }))
-                      }
-                      onFocus={() => handleTaskInputFocus(milestone.id)}
-                      onSubmitEditing={() => handleAddTask(milestone.id)}
-                      returnKeyType="done"
-                    />
-                    <TouchableOpacity
-                      style={[
-                        styles.addTaskButton,
-                        !currentTaskInput.trim() && styles.buttonDisabled,
-                      ]}
-                      onPress={() => handleAddTask(milestone.id)}
-                      disabled={!currentTaskInput.trim()}
-                    >
-                      <Text style={styles.addTaskButtonText}>+ Task</Text>
-                    </TouchableOpacity>
-                  </View>
-                </View>
+                <MilestoneTile
+                  milestone={milestone}
+                  index={i}
+                  isCurrent={isFirstIncomplete}
+                  onPress={(tilePos) => {
+                    setSelectedMilestoneId(milestone.id);
+                    setSelectedTilePos(tilePos);
+                  }}
+                />
               </View>
             );
-          })
-        )}
-      </ScrollView>
-    </KeyboardAvoidingView>
+          })}
+        </ScrollView>
+      )}
+
+      {/* Anchored Popover Bubble Card */}
+      <MilestonePopover
+        visible={Boolean(selectedMilestoneId && selectedTilePos)}
+        milestone={selectedMilestone}
+        tilePos={selectedTilePos}
+        onClose={() => {
+          setSelectedMilestoneId(null);
+          setSelectedTilePos(null);
+        }}
+        onToggleTask={(taskId, currentStatus) => {
+          if (!id) return;
+          toggleTask(id, taskId, currentStatus);
+        }}
+      />
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  keyboardAvoidingView: {
+  screenWrapper: {
     flex: 1,
-    backgroundColor: '#f3f4f6',
+    backgroundColor: '#f8fafc',
   },
-  container: {
+  scrollView: {
     flex: 1,
-    backgroundColor: '#f3f4f6',
   },
-  content: {
-    padding: 16,
-    gap: 16,
+  scrollContent: {
+    position: 'relative',
+    paddingVertical: 20,
   },
-  addMilestoneCard: {
-    backgroundColor: '#ffffff',
+  editHeaderBtn: {
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    backgroundColor: '#eff6ff',
     borderRadius: 8,
-    padding: 14,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
-    gap: 10,
+    borderColor: '#bfdbfe',
+    marginRight: 6,
   },
-  sectionHeader: {
+  editHeaderBtnText: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#374151',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  inputRow: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  input: {
-    flex: 1,
-    height: 42,
-    borderWidth: 1,
-    borderColor: '#d1d5db',
-    borderRadius: 6,
-    paddingHorizontal: 12,
-    fontSize: 15,
-    backgroundColor: '#ffffff',
-    color: '#111827',
-  },
-  primaryButton: {
-    height: 42,
-    paddingHorizontal: 16,
-    backgroundColor: '#2563eb',
-    borderRadius: 6,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  buttonDisabled: {
-    backgroundColor: '#93c5fd',
-  },
-  primaryButtonText: {
-    color: '#ffffff',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  treeSectionTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#1f2937',
-    marginTop: 4,
-  },
-  emptyMilestonesBox: {
-    backgroundColor: '#ffffff',
-    padding: 24,
-    borderRadius: 8,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
-    gap: 4,
-  },
-  emptyText: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#4b5563',
-  },
-  emptySubtext: {
-    fontSize: 13,
-    color: '#9ca3af',
-    textAlign: 'center',
-  },
-  milestoneBlock: {
-    backgroundColor: '#ffffff',
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
-    overflow: 'hidden',
-  },
-  milestoneNode: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 12,
-    backgroundColor: '#f9fafb',
-    borderBottomWidth: 1,
-    borderBottomColor: '#f3f4f6',
-  },
-  milestoneLabelGroup: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    flex: 1,
-  },
-  milestoneIndexBadge: {
-    fontSize: 12,
-    fontWeight: 'bold',
     color: '#2563eb',
-    backgroundColor: '#dbeafe',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
   },
-  milestoneTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#111827',
-    flex: 1,
-  },
-  milestoneActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  milestoneStats: {
-    fontSize: 12,
-    color: '#6b7280',
-    fontWeight: '500',
-  },
-  deleteMilestoneButton: {
-    padding: 4,
-  },
-  deleteButtonText: {
-    fontSize: 15,
-    color: '#ef4444',
-    fontWeight: 'bold',
-  },
-  tasksContainer: {
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    gap: 8,
-  },
-  taskNode: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingVertical: 4,
-  },
-  treeBranchLine: {
-    fontSize: 14,
-    fontFamily: 'monospace',
-    color: '#9ca3af',
-  },
-  checkbox: {
-    width: 22,
-    height: 22,
-    borderWidth: 2,
-    borderColor: '#9ca3af',
-    borderRadius: 4,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#ffffff',
-  },
-  checkboxChecked: {
-    backgroundColor: '#10b981',
-    borderColor: '#10b981',
-  },
-  checkmark: {
-    color: '#ffffff',
-    fontSize: 13,
-    fontWeight: 'bold',
-  },
-  taskTitle: {
-    fontSize: 14,
-    color: '#1f2937',
-    flex: 1,
-  },
-  taskTitleCompleted: {
-    textDecorationLine: 'line-through',
-    color: '#9ca3af',
-  },
-  deleteTaskButton: {
-    padding: 4,
-  },
-  deleteTaskText: {
-    fontSize: 13,
-    color: '#ef4444',
-  },
-  noTasksRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingVertical: 4,
-  },
-  noTasksText: {
-    fontSize: 13,
-    color: '#9ca3af',
-    fontStyle: 'italic',
-  },
-  addTaskRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginTop: 4,
-    paddingTop: 4,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: '#f3f4f6',
-  },
-  taskInput: {
-    flex: 1,
-    height: 36,
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
-    borderRadius: 6,
-    paddingHorizontal: 10,
-    fontSize: 13,
-    backgroundColor: '#f9fafb',
-    color: '#111827',
-  },
-  addTaskButton: {
-    height: 36,
-    paddingHorizontal: 12,
-    backgroundColor: '#3b82f6',
-    borderRadius: 6,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  addTaskButtonText: {
-    color: '#ffffff',
-    fontSize: 13,
-    fontWeight: '600',
+  tileAbsoluteContainer: {
+    position: 'absolute',
+    zIndex: 1,
   },
   centerContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     padding: 32,
+    backgroundColor: '#f8fafc',
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 36,
+    gap: 12,
+  },
+  emptyIcon: {
+    fontSize: 54,
+    marginBottom: 8,
+  },
+  emptyTitle: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#0f172a',
+    textAlign: 'center',
+  },
+  emptyDescription: {
+    fontSize: 14,
+    color: '#64748b',
+    textAlign: 'center',
+    lineHeight: 21,
+    marginBottom: 10,
+  },
+  buildBtn: {
+    backgroundColor: '#2563eb',
+    paddingHorizontal: 24,
+    paddingVertical: 14,
+    borderRadius: 12,
+    shadowColor: '#2563eb',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  buildBtnText: {
+    color: '#ffffff',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  emptyText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#64748b',
   },
 });
