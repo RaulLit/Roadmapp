@@ -10,14 +10,14 @@ import {
   Animated,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useRoadmapStore } from '../store/useRoadmapStore';
-import { Roadmap } from '../db/types';
+import { useRoadmapStore } from '../../store/useRoadmapStore';
+import { useThemeStore } from '../../store/useThemeStore';
+import { Roadmap } from '../../db/types';
 
 export default function RoadmapsScreen() {
   const router = useRouter();
-  const insets = useSafeAreaInsets();
   const { roadmaps, isLoading, loadRoadmaps, removeRoadmap } = useRoadmapStore();
+  const { colors, isDark } = useThemeStore();
   const [fabTranslateY] = useState(() => new Animated.Value(0));
 
   useEffect(() => {
@@ -67,7 +67,6 @@ export default function RoadmapsScreen() {
   });
 
   const upNextRoadmaps = roadmaps.filter((r) => {
-    // Newly created or 0 tasks completed
     return !inProgressRoadmaps.includes(r) && !completedRoadmaps.includes(r);
   });
 
@@ -77,26 +76,33 @@ export default function RoadmapsScreen() {
     const percent = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
 
     let badgeText = '🚀 UP NEXT';
-    let badgeBg = '#e0f2fe';
-    let badgeColor = '#0369a1';
-    let bottomBorderColor = '#cbd5e1';
+    let badgeBg = isDark ? '#0c2847' : '#e0f2fe';
+    let badgeColor = isDark ? '#38bdf8' : '#0369a1';
+    let bottomBorderColor = isDark ? '#0a0f1d' : '#cbd5e1';
 
     if (category === 'in-progress') {
       badgeText = '⚡ IN PROGRESS';
-      badgeBg = '#dcfce7';
-      badgeColor = '#15803d';
-      bottomBorderColor = '#86efac';
+      badgeBg = isDark ? '#063520' : '#dcfce7';
+      badgeColor = isDark ? '#4ade80' : '#15803d';
+      bottomBorderColor = isDark ? '#054e2c' : '#86efac';
     } else if (category === 'completed') {
       badgeText = '🏆 COMPLETED';
-      badgeBg = '#fef3c7';
-      badgeColor = '#b45309';
-      bottomBorderColor = '#fde047';
+      badgeBg = isDark ? '#3d2605' : '#fef3c7';
+      badgeColor = isDark ? '#facc15' : '#b45309';
+      bottomBorderColor = isDark ? '#713f12' : '#fde047';
     }
 
     return (
       <TouchableOpacity
         key={item.id}
-        style={[styles.card, { borderBottomColor: bottomBorderColor }]}
+        style={[
+          styles.card,
+          {
+            backgroundColor: colors.surface,
+            borderColor: colors.border,
+            borderBottomColor: bottomBorderColor,
+          },
+        ]}
         activeOpacity={0.85}
         onPress={() => router.push(`/roadmap/${item.id}` as any)}
       >
@@ -110,19 +116,19 @@ export default function RoadmapsScreen() {
             onPress={() => handleDelete(item.id, item.title)}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           >
-            <Text style={styles.deleteBtnText}>✕</Text>
+            <Text style={[styles.deleteBtnText, { color: colors.textMuted }]}>✕</Text>
           </TouchableOpacity>
         </View>
 
         {/* Roadmap Title */}
-        <Text style={styles.cardTitle} numberOfLines={2}>
+        <Text style={[styles.cardTitle, { color: colors.text }]} numberOfLines={2}>
           {item.title}
         </Text>
 
         {/* Chunky 3D Progress Bar */}
         {totalTasks > 0 ? (
           <View style={styles.progressContainer}>
-            <View style={styles.progressTrack}>
+            <View style={[styles.progressTrack, { backgroundColor: colors.surfaceElevated }]}>
               <View
                 style={[
                   styles.progressBar,
@@ -135,43 +141,43 @@ export default function RoadmapsScreen() {
             </View>
             <View style={styles.progressMeta}>
               <Text style={styles.progressPercent}>{percent}%</Text>
-              <Text style={styles.progressTasks}>
+              <Text style={[styles.progressTasks, { color: colors.textMuted }]}>
                 {completedTasks}/{totalTasks} tasks done
               </Text>
             </View>
           </View>
         ) : (
-          <Text style={styles.draftText}>
+          <Text style={[styles.draftText, { color: colors.textMuted }]}>
             {item.milestones_count || 0} milestones • Ready to structure
           </Text>
         )}
 
         {/* Card Footer */}
-        <View style={styles.cardFooter}>
-          <Text style={styles.milestoneBadge}>
+        <View style={[styles.cardFooter, { borderTopColor: colors.border }]}>
+          <Text style={[styles.milestoneBadge, { color: colors.textMuted }]}>
             📍 {item.milestones_count || 0} {item.milestones_count === 1 ? 'milestone' : 'milestones'}
           </Text>
-          <Text style={styles.continueText}>Continue Path →</Text>
+          <Text style={[styles.continueText, { color: colors.primary }]}>Continue Path →</Text>
         </View>
       </TouchableOpacity>
     );
   };
 
   return (
-    <View style={styles.screen}>
+    <View style={[styles.screen, { backgroundColor: colors.background }]}>
       {isLoading && roadmaps.length === 0 ? (
         <View style={styles.centerContainer}>
-          <ActivityIndicator size="small" color="#2563eb" />
+          <ActivityIndicator size="small" color={colors.primary} />
         </View>
       ) : roadmaps.length === 0 ? (
         <View style={styles.emptyContainer}>
           <Text style={styles.emptyIcon}>🗺️</Text>
-          <Text style={styles.emptyTitle}>Your Journey Starts Here</Text>
-          <Text style={styles.emptySubtitle}>
+          <Text style={[styles.emptyTitle, { color: colors.text }]}>Your Journey Starts Here</Text>
+          <Text style={[styles.emptySubtitle, { color: colors.textMuted }]}>
             Create custom roadmaps with milestones and tasks. Watch your progress come to life in an interactive path!
           </Text>
           <TouchableOpacity
-            style={styles.createFirstBtn}
+            style={[styles.createFirstBtn, { backgroundColor: colors.primary, borderBottomColor: colors.primary3d }]}
             onPress={() => router.push('/new-roadmap' as any)}
             activeOpacity={0.85}
           >
@@ -183,7 +189,7 @@ export default function RoadmapsScreen() {
           style={styles.scrollView}
           contentContainerStyle={[
             styles.scrollContent,
-            { paddingBottom: Math.max(insets.bottom, 16) + 90 },
+            { paddingBottom: 100 },
           ]}
           showsVerticalScrollIndicator={false}
         >
@@ -191,9 +197,9 @@ export default function RoadmapsScreen() {
           {inProgressRoadmaps.length > 0 && (
             <View style={styles.section}>
               <View style={styles.sectionHeaderRow}>
-                <Text style={styles.sectionTitle}>In Progress</Text>
-                <View style={[styles.sectionCountPill, { backgroundColor: '#dcfce7' }]}>
-                  <Text style={[styles.sectionCountText, { color: '#15803d' }]}>
+                <Text style={[styles.sectionTitle, { color: colors.text }]}>In Progress</Text>
+                <View style={[styles.sectionCountPill, { backgroundColor: isDark ? '#063520' : '#dcfce7' }]}>
+                  <Text style={[styles.sectionCountText, { color: isDark ? '#4ade80' : '#15803d' }]}>
                     {inProgressRoadmaps.length}
                   </Text>
                 </View>
@@ -208,9 +214,9 @@ export default function RoadmapsScreen() {
           {upNextRoadmaps.length > 0 && (
             <View style={styles.section}>
               <View style={styles.sectionHeaderRow}>
-                <Text style={styles.sectionTitle}>Up Next</Text>
-                <View style={[styles.sectionCountPill, { backgroundColor: '#e0f2fe' }]}>
-                  <Text style={[styles.sectionCountText, { color: '#0369a1' }]}>
+                <Text style={[styles.sectionTitle, { color: colors.text }]}>Up Next</Text>
+                <View style={[styles.sectionCountPill, { backgroundColor: isDark ? '#0c2847' : '#e0f2fe' }]}>
+                  <Text style={[styles.sectionCountText, { color: isDark ? '#38bdf8' : '#0369a1' }]}>
                     {upNextRoadmaps.length}
                   </Text>
                 </View>
@@ -225,9 +231,9 @@ export default function RoadmapsScreen() {
           {completedRoadmaps.length > 0 && (
             <View style={styles.section}>
               <View style={styles.sectionHeaderRow}>
-                <Text style={styles.sectionTitle}>Completed</Text>
-                <View style={[styles.sectionCountPill, { backgroundColor: '#fef3c7' }]}>
-                  <Text style={[styles.sectionCountText, { color: '#b45309' }]}>
+                <Text style={[styles.sectionTitle, { color: colors.text }]}>Completed</Text>
+                <View style={[styles.sectionCountPill, { backgroundColor: isDark ? '#3d2605' : '#fef3c7' }]}>
+                  <Text style={[styles.sectionCountText, { color: isDark ? '#facc15' : '#b45309' }]}>
                     {completedRoadmaps.length}
                   </Text>
                 </View>
@@ -245,13 +251,13 @@ export default function RoadmapsScreen() {
         style={[
           styles.fabContainer,
           {
-            bottom: Math.max(insets.bottom, 16) + 16,
+            bottom: 20,
             transform: [{ translateY: fabTranslateY }],
           },
         ]}
       >
         <TouchableOpacity
-          style={styles.fab}
+          style={[styles.fab, { backgroundColor: colors.primary, borderBottomColor: colors.primary3d }]}
           onPressIn={handleFabPressIn}
           onPressOut={handleFabPressOut}
           onPress={() => router.push('/new-roadmap' as any)}
@@ -267,14 +273,12 @@ export default function RoadmapsScreen() {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: '#f8fafc',
   },
   scrollView: {
     flex: 1,
   },
   scrollContent: {
     padding: 16,
-    paddingBottom: 100, // Extra padding so bottom items aren't blocked by FAB
     gap: 20,
   },
   section: {
@@ -289,7 +293,6 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 16,
     fontWeight: '800',
-    color: '#0f172a',
     letterSpacing: 0.3,
   },
   sectionCountPill: {
@@ -305,15 +308,13 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   card: {
-    backgroundColor: '#ffffff',
     borderRadius: 18,
     padding: 18,
     borderWidth: 1.5,
-    borderColor: '#e2e8f0',
     borderBottomWidth: 5,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.06,
+    shadowOpacity: 0.08,
     shadowRadius: 8,
     elevation: 3,
     gap: 10,
@@ -338,20 +339,17 @@ const styles = StyleSheet.create({
   },
   deleteBtnText: {
     fontSize: 14,
-    color: '#94a3b8',
     fontWeight: 'bold',
   },
   cardTitle: {
     fontSize: 18,
     fontWeight: '800',
-    color: '#0f172a',
   },
   progressContainer: {
     gap: 5,
   },
   progressTrack: {
     height: 8,
-    backgroundColor: '#f1f5f9',
     borderRadius: 4,
     overflow: 'hidden',
   },
@@ -371,12 +369,10 @@ const styles = StyleSheet.create({
   },
   progressTasks: {
     fontSize: 12,
-    color: '#64748b',
     fontWeight: '600',
   },
   draftText: {
     fontSize: 12,
-    color: '#94a3b8',
     fontWeight: '500',
     fontStyle: 'italic',
   },
@@ -386,17 +382,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingTop: 8,
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: '#f1f5f9',
   },
   milestoneBadge: {
     fontSize: 12,
-    color: '#64748b',
     fontWeight: '600',
   },
   continueText: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#2563eb',
   },
   fabContainer: {
     position: 'absolute',
@@ -407,14 +400,12 @@ const styles = StyleSheet.create({
     width: 60,
     height: 60,
     borderRadius: 30,
-    backgroundColor: '#2563eb',
     justifyContent: 'center',
     alignItems: 'center',
     borderBottomWidth: 4,
-    borderBottomColor: '#1d4ed8',
-    shadowColor: '#2563eb',
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.35,
+    shadowOpacity: 0.25,
     shadowRadius: 10,
     elevation: 6,
   },
@@ -444,23 +435,19 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 22,
     fontWeight: '800',
-    color: '#0f172a',
     textAlign: 'center',
   },
   emptySubtitle: {
     fontSize: 14,
-    color: '#64748b',
     textAlign: 'center',
     lineHeight: 21,
     marginBottom: 8,
   },
   createFirstBtn: {
-    backgroundColor: '#2563eb',
     borderRadius: 12,
     paddingVertical: 14,
     paddingHorizontal: 22,
     borderBottomWidth: 4,
-    borderBottomColor: '#1d4ed8',
   },
   createFirstBtnText: {
     color: '#ffffff',

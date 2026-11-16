@@ -1,45 +1,56 @@
 import { useEffect } from 'react';
 import { Stack } from 'expo-router';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { StyleSheet } from 'react-native';
+import { StyleSheet, useColorScheme } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
 import { getDatabase } from '../db/database';
+import { useThemeStore } from '../store/useThemeStore';
 
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
+  const systemColorScheme = useColorScheme();
+  const { colors, isDark, initTheme, updateSystemTheme } = useThemeStore();
+
   useEffect(() => {
     try {
       getDatabase();
+      initTheme();
     } catch (e) {
-      console.error('Failed to initialize database:', e);
+      console.error('Failed to initialize database or theme:', e);
     } finally {
       SplashScreen.hideAsync();
     }
-  }, []);
+  }, [initTheme]);
+
+  useEffect(() => {
+    updateSystemTheme(systemColorScheme);
+  }, [systemColorScheme, updateSystemTheme]);
 
   return (
-    <GestureHandlerRootView style={styles.container}>
-      <StatusBar style="dark" />
+    <GestureHandlerRootView style={[styles.container, { backgroundColor: colors.background }]}>
+      <StatusBar style={isDark ? 'light' : 'dark'} />
       <Stack
         screenOptions={{
           headerStyle: {
-            backgroundColor: '#ffffff',
+            backgroundColor: colors.surface,
           },
-          headerTintColor: '#111827',
+          headerTintColor: colors.text,
           headerTitleStyle: {
-            fontWeight: '600',
+            fontWeight: '700',
+            fontSize: 17,
           },
           contentStyle: {
-            backgroundColor: '#f3f4f6',
+            backgroundColor: colors.background,
           },
+          headerShadowVisible: false,
         }}
       >
         <Stack.Screen
-          name="index"
+          name="(tabs)"
           options={{
-            title: 'Roadmaps',
+            headerShown: false,
           }}
         />
         <Stack.Screen

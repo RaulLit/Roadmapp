@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 import { Milestone, Task } from '../db/types';
+import { useThemeStore } from '../store/useThemeStore';
 
 interface MilestonePopoverProps {
   visible: boolean;
@@ -28,6 +29,7 @@ export function MilestonePopover({
   onToggleTask,
 }: MilestonePopoverProps) {
   const { height: screenHeight, width: screenWidth } = useWindowDimensions();
+  const { colors, isDark } = useThemeStore();
 
   if (!visible || !milestone || !tilePos) {
     return null;
@@ -72,6 +74,8 @@ export function MilestonePopover({
                   top: popoverTop,
                   left: popoverLeft,
                   width: popoverWidth,
+                  backgroundColor: colors.surface,
+                  borderColor: colors.border,
                 },
               ]}
             >
@@ -79,17 +83,21 @@ export function MilestonePopover({
               <View
                 style={[
                   isUpperHalf ? styles.arrowUp : styles.arrowDown,
-                  { left: arrowLeft },
+                  {
+                    left: arrowLeft,
+                    borderBottomColor: isUpperHalf ? colors.surface : 'transparent',
+                    borderTopColor: !isUpperHalf ? colors.surface : 'transparent',
+                  },
                 ]}
               />
 
               {/* Header */}
               <View style={styles.cardHeader}>
                 <View style={styles.headerTitleGroup}>
-                  <Text style={styles.milestoneTag}>
+                  <Text style={[styles.milestoneTag, { color: colors.primary }]}>
                     Milestone #{milestone.order_index + 1}
                   </Text>
-                  <Text style={styles.milestoneTitle} numberOfLines={2}>
+                  <Text style={[styles.milestoneTitle, { color: colors.text }]} numberOfLines={2}>
                     {milestone.title}
                   </Text>
                 </View>
@@ -98,44 +106,71 @@ export function MilestonePopover({
                   onPress={onClose}
                   hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                 >
-                  <Text style={styles.closeBtnText}>✕</Text>
+                  <Text style={[styles.closeBtnText, { color: colors.textMuted }]}>✕</Text>
                 </TouchableOpacity>
               </View>
 
               {/* Progress Summary Bar */}
               <View style={styles.progressContainer}>
-                <View style={styles.progressTrack}>
+                <View style={[styles.progressTrack, { backgroundColor: colors.surfaceElevated }]}>
                   <View
                     style={[
                       styles.progressBar,
                       {
                         width: totalTasks > 0 ? `${(completedTasks / totalTasks) * 100}%` : '0%',
+                        backgroundColor: colors.success,
                       },
                     ]}
                   />
                 </View>
-                <Text style={styles.progressText}>
+                <Text style={[styles.progressText, { color: colors.textMuted }]}>
                   {completedTasks} of {totalTasks} completed
                 </Text>
               </View>
 
               {/* Next Task Highlight Box */}
               {isAllComplete ? (
-                <View style={styles.completedBox}>
+                <View
+                  style={[
+                    styles.completedBox,
+                    {
+                      backgroundColor: isDark ? '#063520' : '#f0fdf4',
+                      borderColor: isDark ? '#054e2c' : '#bbf7d0',
+                    },
+                  ]}
+                >
                   <Text style={styles.completedIcon}>🎉</Text>
-                  <Text style={styles.completedTitle}>Milestone Completed!</Text>
-                  <Text style={styles.completedSubtitle}>
+                  <Text style={[styles.completedTitle, { color: isDark ? '#4ade80' : '#166534' }]}>
+                    Milestone Completed!
+                  </Text>
+                  <Text style={[styles.completedSubtitle, { color: isDark ? '#86efac' : '#15803d' }]}>
                     All tasks in this milestone are finished. Great job!
                   </Text>
                 </View>
               ) : nextTask ? (
-                <View style={styles.nextTaskCard}>
+                <View
+                  style={[
+                    styles.nextTaskCard,
+                    {
+                      backgroundColor: colors.surfaceElevated,
+                      borderColor: colors.border,
+                    },
+                  ]}
+                >
                   <View style={styles.nextTaskBadgeRow}>
-                    <Text style={styles.nextTaskBadge}>NEXT TASK</Text>
+                    <Text style={[styles.nextTaskBadge, { color: isDark ? '#38bdf8' : '#0284c7' }]}>
+                      NEXT TASK
+                    </Text>
                   </View>
-                  <Text style={styles.nextTaskTitle}>{nextTask.title}</Text>
+                  <Text style={[styles.nextTaskTitle, { color: colors.text }]}>{nextTask.title}</Text>
                   <TouchableOpacity
-                    style={styles.completeCtaButton}
+                    style={[
+                      styles.completeCtaButton,
+                      {
+                        backgroundColor: colors.success,
+                        borderBottomColor: colors.success3d,
+                      },
+                    ]}
                     activeOpacity={0.8}
                     onPress={() => onToggleTask(nextTask.id, nextTask.is_completed)}
                   >
@@ -143,15 +178,19 @@ export function MilestonePopover({
                   </TouchableOpacity>
                 </View>
               ) : (
-                <View style={styles.emptyTasksBox}>
-                  <Text style={styles.emptyTasksText}>No tasks added to this milestone yet.</Text>
+                <View style={[styles.emptyTasksBox, { backgroundColor: colors.surfaceElevated }]}>
+                  <Text style={[styles.emptyTasksText, { color: colors.textMuted }]}>
+                    No tasks added to this milestone yet.
+                  </Text>
                 </View>
               )}
 
               {/* All Tasks Checklist */}
               {totalTasks > 0 && (
-                <View style={styles.tasksListSection}>
-                  <Text style={styles.tasksSectionTitle}>All Tasks</Text>
+                <View style={[styles.tasksListSection, { borderTopColor: colors.border }]}>
+                  <Text style={[styles.tasksSectionTitle, { color: colors.textMuted }]}>
+                    All Tasks
+                  </Text>
                   <ScrollView style={styles.taskListScroll} nestedScrollEnabled>
                     {milestone.tasks.map((task) => (
                       <TouchableOpacity
@@ -163,7 +202,11 @@ export function MilestonePopover({
                         <View
                           style={[
                             styles.checkbox,
-                            task.is_completed && styles.checkboxChecked,
+                            {
+                              borderColor: colors.border,
+                              backgroundColor: task.is_completed ? colors.success : colors.surface,
+                            },
+                            task.is_completed && { borderColor: colors.success },
                           ]}
                         >
                           {task.is_completed && <Text style={styles.checkMark}>✓</Text>}
@@ -171,7 +214,11 @@ export function MilestonePopover({
                         <Text
                           style={[
                             styles.taskRowTitle,
-                            task.is_completed && styles.taskRowTitleDone,
+                            { color: colors.text },
+                            task.is_completed && {
+                              textDecorationLine: 'line-through',
+                              color: colors.textMuted,
+                            },
                           ]}
                           numberOfLines={2}
                         >
@@ -193,16 +240,16 @@ export function MilestonePopover({
 const styles = StyleSheet.create({
   backdrop: {
     flex: 1,
-    backgroundColor: 'rgba(15, 23, 42, 0.45)',
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
   },
   popoverCard: {
     position: 'absolute',
-    backgroundColor: '#ffffff',
     borderRadius: 16,
     padding: 18,
+    borderWidth: 1,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.25,
+    shadowOpacity: 0.3,
     shadowRadius: 15,
     elevation: 10,
     zIndex: 100,
@@ -219,7 +266,6 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
     borderLeftColor: 'transparent',
     borderRightColor: 'transparent',
-    borderBottomColor: '#ffffff',
   },
   arrowDown: {
     position: 'absolute',
@@ -233,7 +279,6 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
     borderLeftColor: 'transparent',
     borderRightColor: 'transparent',
-    borderTopColor: '#ffffff',
   },
   cardHeader: {
     flexDirection: 'row',
@@ -248,14 +293,12 @@ const styles = StyleSheet.create({
   milestoneTag: {
     fontSize: 11,
     fontWeight: '800',
-    color: '#2563eb',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
   milestoneTitle: {
     fontSize: 17,
     fontWeight: '700',
-    color: '#0f172a',
     marginTop: 2,
   },
   closeBtn: {
@@ -264,7 +307,6 @@ const styles = StyleSheet.create({
   closeBtnText: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#94a3b8',
   },
   progressContainer: {
     flexDirection: 'row',
@@ -275,26 +317,21 @@ const styles = StyleSheet.create({
   progressTrack: {
     flex: 1,
     height: 6,
-    backgroundColor: '#f1f5f9',
     borderRadius: 3,
     overflow: 'hidden',
   },
   progressBar: {
     height: '100%',
-    backgroundColor: '#10b981',
     borderRadius: 3,
   },
   progressText: {
     fontSize: 11,
     fontWeight: '600',
-    color: '#64748b',
   },
   nextTaskCard: {
-    backgroundColor: '#f8fafc',
     borderRadius: 12,
     padding: 12,
     borderWidth: 1,
-    borderColor: '#e2e8f0',
     marginBottom: 12,
   },
   nextTaskBadgeRow: {
@@ -303,23 +340,19 @@ const styles = StyleSheet.create({
   nextTaskBadge: {
     fontSize: 10,
     fontWeight: '800',
-    color: '#0284c7',
     letterSpacing: 0.5,
   },
   nextTaskTitle: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#1e293b',
     marginBottom: 10,
   },
   completeCtaButton: {
-    backgroundColor: '#10b981',
     borderRadius: 8,
     paddingVertical: 10,
     alignItems: 'center',
     justifyContent: 'center',
     borderBottomWidth: 3,
-    borderBottomColor: '#059669',
   },
   completeCtaText: {
     color: '#ffffff',
@@ -327,12 +360,10 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   completedBox: {
-    backgroundColor: '#f0fdf4',
     borderRadius: 12,
     padding: 14,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#bbf7d0',
     marginBottom: 12,
     gap: 2,
   },
@@ -342,33 +373,27 @@ const styles = StyleSheet.create({
   completedTitle: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#166534',
   },
   completedSubtitle: {
     fontSize: 12,
-    color: '#15803d',
     textAlign: 'center',
   },
   emptyTasksBox: {
-    backgroundColor: '#f8fafc',
     padding: 12,
     borderRadius: 8,
     marginBottom: 10,
   },
   emptyTasksText: {
     fontSize: 13,
-    color: '#94a3b8',
     textAlign: 'center',
   },
   tasksListSection: {
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: '#e2e8f0',
     paddingTop: 10,
   },
   tasksSectionTitle: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#64748b',
     marginBottom: 6,
     textTransform: 'uppercase',
   },
@@ -386,14 +411,8 @@ const styles = StyleSheet.create({
     height: 18,
     borderRadius: 4,
     borderWidth: 1.5,
-    borderColor: '#cbd5e1',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#ffffff',
-  },
-  checkboxChecked: {
-    backgroundColor: '#10b981',
-    borderColor: '#10b981',
   },
   checkMark: {
     color: '#ffffff',
@@ -402,11 +421,6 @@ const styles = StyleSheet.create({
   },
   taskRowTitle: {
     fontSize: 13,
-    color: '#334155',
     flex: 1,
-  },
-  taskRowTitleDone: {
-    textDecorationLine: 'line-through',
-    color: '#94a3b8',
   },
 });

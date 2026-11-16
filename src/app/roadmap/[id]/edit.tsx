@@ -14,11 +14,13 @@ import {
 } from 'react-native';
 import { useLocalSearchParams, useRouter, useNavigation } from 'expo-router';
 import { useRoadmapStore } from '../../../store/useRoadmapStore';
+import { useThemeStore } from '../../../store/useThemeStore';
 
 export default function EditRoadmapScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const navigation = useNavigation();
+  const { colors, isDark } = useThemeStore();
 
   const {
     currentRoadmap,
@@ -55,12 +57,16 @@ export default function EditRoadmapScreen() {
     navigation.setOptions({
       title: currentRoadmap ? `Edit: ${currentRoadmap.title}` : 'Edit Roadmap',
       headerRight: () => (
-        <TouchableOpacity onPress={() => router.back()} style={styles.doneHeaderBtn} activeOpacity={0.8}>
+        <TouchableOpacity
+          onPress={() => router.back()}
+          style={[styles.doneHeaderBtn, { backgroundColor: colors.primary }]}
+          activeOpacity={0.8}
+        >
           <Text style={styles.doneHeaderBtnText}>Done</Text>
         </TouchableOpacity>
       ),
     });
-  }, [currentRoadmap, navigation, router]);
+  }, [colors.primary, currentRoadmap, navigation, router]);
 
   useEffect(() => {
     const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
@@ -134,16 +140,16 @@ export default function EditRoadmapScreen() {
 
   if (isLoading && !currentRoadmap) {
     return (
-      <View style={styles.centerContainer}>
-        <ActivityIndicator size="small" color="#2563eb" />
+      <View style={[styles.centerContainer, { backgroundColor: colors.background }]}>
+        <ActivityIndicator size="small" color={colors.primary} />
       </View>
     );
   }
 
   if (!currentRoadmap) {
     return (
-      <View style={styles.centerContainer}>
-        <Text style={styles.emptyText}>Roadmap not found.</Text>
+      <View style={[styles.centerContainer, { backgroundColor: colors.background }]}>
+        <Text style={[styles.emptyText, { color: colors.textMuted }]}>Roadmap not found.</Text>
       </View>
     );
   }
@@ -153,13 +159,13 @@ export default function EditRoadmapScreen() {
 
   return (
     <KeyboardAvoidingView
-      style={styles.keyboardAvoidingView}
+      style={[styles.keyboardAvoidingView, { backgroundColor: colors.background }]}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
     >
       <ScrollView
         ref={scrollViewRef}
-        style={styles.container}
+        style={[styles.container, { backgroundColor: colors.background }]}
         contentContainerStyle={[
           styles.content,
           { paddingBottom: keyboardHeight > 0 ? keyboardHeight + 80 : 80 },
@@ -169,11 +175,27 @@ export default function EditRoadmapScreen() {
         automaticallyAdjustKeyboardInsets={Platform.OS === 'ios'}
       >
         {/* Rename Roadmap Card */}
-        <View style={styles.card}>
-          <Text style={styles.sectionTitle}>Roadmap Name</Text>
+        <View
+          style={[
+            styles.card,
+            {
+              backgroundColor: colors.surface,
+              borderColor: colors.border,
+              borderBottomColor: colors.border3d,
+            },
+          ]}
+        >
+          <Text style={[styles.sectionTitle, { color: colors.textMuted }]}>Roadmap Name</Text>
           <View style={styles.inputRow}>
             <TextInput
-              style={styles.input}
+              style={[
+                styles.input,
+                {
+                  backgroundColor: colors.surfaceElevated,
+                  borderColor: colors.border,
+                  color: colors.text,
+                },
+              ]}
               placeholder="Roadmap title..."
               placeholderTextColor="#94a3b8"
               value={roadmapTitle}
@@ -195,11 +217,27 @@ export default function EditRoadmapScreen() {
         </View>
 
         {/* Add Milestone Card */}
-        <View style={styles.card}>
-          <Text style={styles.sectionTitle}>Add New Milestone</Text>
+        <View
+          style={[
+            styles.card,
+            {
+              backgroundColor: colors.surface,
+              borderColor: colors.border,
+              borderBottomColor: colors.border3d,
+            },
+          ]}
+        >
+          <Text style={[styles.sectionTitle, { color: colors.textMuted }]}>Add New Milestone</Text>
           <View style={styles.inputRow}>
             <TextInput
-              style={styles.input}
+              style={[
+                styles.input,
+                {
+                  backgroundColor: colors.surfaceElevated,
+                  borderColor: colors.border,
+                  color: colors.text,
+                },
+              ]}
               placeholder="e.g. Phase 1: Core Fundamentals"
               placeholderTextColor="#94a3b8"
               value={milestoneTitle}
@@ -208,7 +246,11 @@ export default function EditRoadmapScreen() {
               returnKeyType="done"
             />
             <TouchableOpacity
-              style={[styles.primaryBtn, !milestoneTitle.trim() && styles.btnDisabled]}
+              style={[
+                styles.primaryBtn,
+                { backgroundColor: colors.primary, borderBottomColor: colors.primary3d },
+                !milestoneTitle.trim() && styles.btnDisabled,
+              ]}
               onPress={handleAddMilestone}
               disabled={!milestoneTitle.trim()}
               activeOpacity={0.8}
@@ -219,12 +261,21 @@ export default function EditRoadmapScreen() {
         </View>
 
         {/* Existing Milestones List */}
-        <Text style={styles.milestonesHeader}>Milestones & Tasks</Text>
+        <Text style={[styles.milestonesHeader, { color: colors.text }]}>Milestones & Tasks</Text>
 
         {currentRoadmap.milestones.length === 0 ? (
-          <View style={styles.emptyCard}>
-            <Text style={styles.emptyCardTitle}>No milestones yet</Text>
-            <Text style={styles.emptyCardSubtitle}>
+          <View
+            style={[
+              styles.emptyCard,
+              {
+                backgroundColor: colors.surface,
+                borderColor: colors.border,
+                borderBottomColor: colors.border3d,
+              },
+            ]}
+          >
+            <Text style={[styles.emptyCardTitle, { color: colors.text }]}>No milestones yet</Text>
+            <Text style={[styles.emptyCardSubtitle, { color: colors.textMuted }]}>
               Add your first milestone above to start building your roadmap.
             </Text>
           </View>
@@ -235,16 +286,43 @@ export default function EditRoadmapScreen() {
             return (
               <View
                 key={milestone.id}
-                style={styles.milestoneBlock}
+                style={[
+                  styles.milestoneBlock,
+                  {
+                    backgroundColor: colors.surface,
+                    borderColor: colors.border,
+                    borderBottomColor: colors.border3d,
+                  },
+                ]}
                 onLayout={(event) => {
                   milestoneLayouts.current[milestone.id] = event.nativeEvent.layout.y;
                 }}
               >
                 {/* Milestone Header */}
-                <View style={styles.milestoneHeader}>
+                <View
+                  style={[
+                    styles.milestoneHeader,
+                    {
+                      backgroundColor: colors.surfaceElevated,
+                      borderBottomColor: colors.border,
+                    },
+                  ]}
+                >
                   <View style={styles.milestoneBadgeTitle}>
-                    <Text style={styles.badgeIndex}>#{mIndex + 1}</Text>
-                    <Text style={styles.milestoneName}>{milestone.title}</Text>
+                    <Text
+                      style={[
+                        styles.badgeIndex,
+                        {
+                          backgroundColor: isDark ? '#0c2847' : '#dbeafe',
+                          color: isDark ? '#38bdf8' : '#2563eb',
+                        },
+                      ]}
+                    >
+                      #{mIndex + 1}
+                    </Text>
+                    <Text style={[styles.milestoneName, { color: colors.text }]}>
+                      {milestone.title}
+                    </Text>
                   </View>
                   <TouchableOpacity
                     style={styles.deleteMilestoneBtn}
@@ -258,9 +336,17 @@ export default function EditRoadmapScreen() {
                 {/* Tasks List */}
                 <View style={styles.tasksContainer}>
                   {milestone.tasks.map((task, tIndex) => (
-                    <View key={task.id} style={styles.taskItem}>
-                      <Text style={styles.taskIndex}>{tIndex + 1}.</Text>
-                      <Text style={styles.taskTitle}>{task.title}</Text>
+                    <View
+                      key={task.id}
+                      style={[
+                        styles.taskItem,
+                        { borderBottomColor: isDark ? '#1e293b' : '#f1f5f9' },
+                      ]}
+                    >
+                      <Text style={[styles.taskIndex, { color: colors.textMuted }]}>
+                        {tIndex + 1}.
+                      </Text>
+                      <Text style={[styles.taskTitle, { color: colors.text }]}>{task.title}</Text>
                       <TouchableOpacity
                         style={styles.deleteTaskBtn}
                         onPress={() => handleDeleteTask(task.id)}
@@ -274,7 +360,14 @@ export default function EditRoadmapScreen() {
                   {/* Add Task Input Row */}
                   <View style={styles.addTaskRow}>
                     <TextInput
-                      style={styles.taskInput}
+                      style={[
+                        styles.taskInput,
+                        {
+                          backgroundColor: colors.surfaceElevated,
+                          borderColor: colors.border,
+                          color: colors.text,
+                        },
+                      ]}
                       placeholder="Add task to milestone..."
                       placeholderTextColor="#94a3b8"
                       value={taskInputVal}
@@ -286,7 +379,14 @@ export default function EditRoadmapScreen() {
                       returnKeyType="done"
                     />
                     <TouchableOpacity
-                      style={[styles.addTaskBtn, !taskInputVal.trim() && styles.btnDisabled]}
+                      style={[
+                        styles.addTaskBtn,
+                        {
+                          backgroundColor: colors.primary,
+                          borderBottomColor: colors.primary3d,
+                        },
+                        !taskInputVal.trim() && styles.btnDisabled,
+                      ]}
                       onPress={() => handleAddTask(milestone.id)}
                       disabled={!taskInputVal.trim()}
                       activeOpacity={0.8}
@@ -307,7 +407,6 @@ export default function EditRoadmapScreen() {
 const styles = StyleSheet.create({
   keyboardAvoidingView: {
     flex: 1,
-    backgroundColor: '#f8fafc',
   },
   container: {
     flex: 1,
@@ -319,7 +418,6 @@ const styles = StyleSheet.create({
   doneHeaderBtn: {
     paddingHorizontal: 14,
     paddingVertical: 6,
-    backgroundColor: '#2563eb',
     borderRadius: 8,
     marginRight: 6,
   },
@@ -329,13 +427,10 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   card: {
-    backgroundColor: '#ffffff',
     borderRadius: 14,
     padding: 16,
     borderWidth: 1.5,
-    borderColor: '#e2e8f0',
     borderBottomWidth: 4,
-    borderBottomColor: '#cbd5e1',
     gap: 10,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
@@ -346,7 +441,6 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 12,
     fontWeight: '800',
-    color: '#475569',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
@@ -358,12 +452,9 @@ const styles = StyleSheet.create({
     flex: 1,
     height: 44,
     borderWidth: 1.5,
-    borderColor: '#cbd5e1',
     borderRadius: 8,
     paddingHorizontal: 12,
     fontSize: 15,
-    backgroundColor: '#f8fafc',
-    color: '#0f172a',
   },
   saveTitleBtn: {
     height: 44,
@@ -383,16 +474,13 @@ const styles = StyleSheet.create({
   primaryBtn: {
     height: 44,
     paddingHorizontal: 16,
-    backgroundColor: '#2563eb',
     borderRadius: 8,
     borderBottomWidth: 3,
-    borderBottomColor: '#1d4ed8',
     justifyContent: 'center',
     alignItems: 'center',
   },
   btnDisabled: {
-    backgroundColor: '#93c5fd',
-    borderBottomColor: '#60a5fa',
+    opacity: 0.5,
   },
   primaryBtnText: {
     color: '#ffffff',
@@ -402,37 +490,28 @@ const styles = StyleSheet.create({
   milestonesHeader: {
     fontSize: 16,
     fontWeight: '800',
-    color: '#1e293b',
     marginTop: 4,
   },
   emptyCard: {
-    backgroundColor: '#ffffff',
     padding: 24,
     borderRadius: 14,
     alignItems: 'center',
     borderWidth: 1.5,
-    borderColor: '#e2e8f0',
     borderBottomWidth: 4,
-    borderBottomColor: '#cbd5e1',
     gap: 4,
   },
   emptyCardTitle: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#475569',
   },
   emptyCardSubtitle: {
     fontSize: 13,
-    color: '#94a3b8',
     textAlign: 'center',
   },
   milestoneBlock: {
-    backgroundColor: '#ffffff',
     borderRadius: 14,
     borderWidth: 1.5,
-    borderColor: '#e2e8f0',
     borderBottomWidth: 4,
-    borderBottomColor: '#cbd5e1',
     overflow: 'hidden',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
@@ -445,9 +524,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: 12,
-    backgroundColor: '#f8fafc',
     borderBottomWidth: 1,
-    borderBottomColor: '#e2e8f0',
   },
   milestoneBadgeTitle: {
     flexDirection: 'row',
@@ -458,8 +535,6 @@ const styles = StyleSheet.create({
   badgeIndex: {
     fontSize: 12,
     fontWeight: '800',
-    color: '#2563eb',
-    backgroundColor: '#dbeafe',
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 4,
@@ -467,7 +542,6 @@ const styles = StyleSheet.create({
   milestoneName: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#0f172a',
     flex: 1,
   },
   deleteMilestoneBtn: {
@@ -489,17 +563,14 @@ const styles = StyleSheet.create({
     gap: 8,
     paddingVertical: 6,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#f1f5f9',
   },
   taskIndex: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#94a3b8',
     width: 20,
   },
   taskTitle: {
     fontSize: 14,
-    color: '#334155',
     flex: 1,
   },
   deleteTaskBtn: {
@@ -520,20 +591,15 @@ const styles = StyleSheet.create({
     flex: 1,
     height: 38,
     borderWidth: 1.5,
-    borderColor: '#cbd5e1',
     borderRadius: 6,
     paddingHorizontal: 10,
     fontSize: 13,
-    backgroundColor: '#f8fafc',
-    color: '#0f172a',
   },
   addTaskBtn: {
     height: 38,
     paddingHorizontal: 14,
-    backgroundColor: '#3b82f6',
     borderRadius: 6,
     borderBottomWidth: 2,
-    borderBottomColor: '#1d4ed8',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -551,6 +617,5 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#64748b',
   },
 });

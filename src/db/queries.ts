@@ -202,3 +202,17 @@ export function deleteTaskById(taskId: string): void {
   const db = getDatabase();
   db.runSync('DELETE FROM tasks WHERE id = ?;', [taskId]);
 }
+
+export function getSetting(key: string): string | null {
+  const db = getDatabase();
+  const row = db.getFirstSync<{ value: string }>('SELECT value FROM app_settings WHERE key = ?;', [key]);
+  return row ? row.value : null;
+}
+
+export function setSetting(key: string, value: string): void {
+  const db = getDatabase();
+  db.runSync(
+    'INSERT INTO app_settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value;',
+    [key, value]
+  );
+}

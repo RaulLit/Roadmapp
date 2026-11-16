@@ -1,15 +1,18 @@
 import React from 'react';
 import Svg, { Path } from 'react-native-svg';
 import { StyleSheet, View } from 'react-native';
+import { useThemeStore } from '../store/useThemeStore';
 
 interface PathConnectorProps {
   fromX: number;
   fromY: number;
   toX: number;
   toY: number;
+  strokeColor?: string;
 }
 
-export function PathConnector({ fromX, fromY, toX, toY }: PathConnectorProps) {
+export function PathConnector({ fromX, fromY, toX, toY, strokeColor }: PathConnectorProps) {
+  const { colors } = useThemeStore();
   const minX = Math.min(fromX, toX) - 20;
   const minY = Math.min(fromY, toY);
   const width = Math.max(Math.abs(toX - fromX) + 40, 40);
@@ -46,7 +49,7 @@ export function PathConnector({ fromX, fromY, toX, toY }: PathConnectorProps) {
         <Path
           d={d}
           fill="none"
-          stroke="#cbd5e1"
+          stroke={strokeColor || colors.pathConnector}
           strokeWidth={6}
           strokeDasharray="8, 8"
           strokeLinecap="round"

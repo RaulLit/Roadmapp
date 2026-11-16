@@ -8,6 +8,7 @@ import {
 } from 'react-native';
 import Svg, { Path, Circle } from 'react-native-svg';
 import { Milestone, Task } from '../db/types';
+import { useThemeStore } from '../store/useThemeStore';
 
 interface MilestoneTileProps {
   milestone: Milestone & { tasks: Task[] };
@@ -38,6 +39,7 @@ function describeArc(x: number, y: number, radius: number, startAngle: number, e
 }
 
 export function MilestoneTile({ milestone, index, onPress, isCurrent }: MilestoneTileProps) {
+  const { colors, isDark } = useThemeStore();
   const tileRef = useRef<React.ElementRef<typeof View>>(null);
   const [translateY] = useState(() => new Animated.Value(0));
 
@@ -78,6 +80,9 @@ export function MilestoneTile({ milestone, index, onPress, isCurrent }: Mileston
   const completedTasks = milestone.tasks.filter((t) => t.is_completed).length;
   const isAllCompleted = totalTasks > 0 && completedTasks === totalTasks;
 
+  const trackColor = isDark ? '#1e293b' : '#e2e8f0';
+  const emptyDashedColor = isDark ? '#334155' : '#cbd5e1';
+
   // Render segmented progress ring
   const renderProgressRing = () => {
     if (totalTasks === 0) {
@@ -87,7 +92,7 @@ export function MilestoneTile({ milestone, index, onPress, isCurrent }: Mileston
           cy={CENTER}
           r={RADIUS}
           fill="none"
-          stroke="#cbd5e1"
+          stroke={emptyDashedColor}
           strokeWidth={STROKE_WIDTH}
           strokeDasharray="4, 4"
         />
@@ -102,7 +107,7 @@ export function MilestoneTile({ milestone, index, onPress, isCurrent }: Mileston
         const startAngle = i * segmentAngle + gapAngle / 2;
         const endAngle = (i + 1) * segmentAngle - gapAngle / 2;
         const pathData = describeArc(CENTER, CENTER, RADIUS, startAngle, endAngle);
-        const strokeColor = task.is_completed ? '#10b981' : '#e2e8f0';
+        const strokeColor = task.is_completed ? '#10b981' : trackColor;
 
         return (
           <Path
@@ -129,7 +134,7 @@ export function MilestoneTile({ milestone, index, onPress, isCurrent }: Mileston
           cy={CENTER}
           r={RADIUS}
           fill="none"
-          stroke="#e2e8f0"
+          stroke={trackColor}
           strokeWidth={STROKE_WIDTH}
         />
         {percent > 0 && (
@@ -151,16 +156,16 @@ export function MilestoneTile({ milestone, index, onPress, isCurrent }: Mileston
   };
 
   // Center button color theme
-  let buttonBg = '#2563eb';
-  let buttonBorder = '#1d4ed8';
+  let buttonBg = colors.primary;
+  let buttonBorder = colors.primary3d;
   let badgeText = `${index + 1}`;
 
   if (isAllCompleted) {
-    buttonBg = '#10b981';
-    buttonBorder = '#059669';
+    buttonBg = colors.success;
+    buttonBorder = colors.success3d;
     badgeText = '✓';
   } else if (isCurrent) {
-    buttonBg = '#3b82f6';
+    buttonBg = isDark ? '#3b82f6' : '#2563eb';
     buttonBorder = '#1d4ed8';
   }
 
@@ -188,10 +193,10 @@ export function MilestoneTile({ milestone, index, onPress, isCurrent }: Mileston
 
       {/* Milestone Title Label below node */}
       <View style={styles.titleContainer}>
-        <Text style={styles.titleText} numberOfLines={1}>
+        <Text style={[styles.titleText, { color: colors.text }]} numberOfLines={1}>
           {milestone.title}
         </Text>
-        <Text style={styles.subtitleText}>
+        <Text style={[styles.subtitleText, { color: colors.textMuted }]}>
           {completedTasks}/{totalTasks}
         </Text>
       </View>
@@ -247,13 +252,11 @@ const styles = StyleSheet.create({
   titleText: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#334155',
     textAlign: 'center',
   },
   subtitleText: {
     fontSize: 11,
     fontWeight: '600',
-    color: '#94a3b8',
     marginTop: 1,
   },
 });

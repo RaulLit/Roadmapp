@@ -14,12 +14,14 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useRoadmapStore } from '../store/useRoadmapStore';
+import { useThemeStore } from '../store/useThemeStore';
 
 export default function NewRoadmapScreen() {
   const router = useRouter();
   const [title, setTitle] = useState('');
   const [btnTranslateY] = useState(() => new Animated.Value(0));
   const { addRoadmap } = useRoadmapStore();
+  const { colors } = useThemeStore();
 
   const handlePressIn = () => {
     Animated.spring(btnTranslateY, {
@@ -43,14 +45,13 @@ export default function NewRoadmapScreen() {
     if (!title.trim()) return;
     const created = addRoadmap(title.trim());
     if (created) {
-      // Immediately navigate to the editor to add milestones and tasks
       router.replace(`/roadmap/${created.id}/edit` as any);
     }
   };
 
   return (
     <KeyboardAvoidingView
-      style={styles.keyboardAvoidingView}
+      style={[styles.keyboardAvoidingView, { backgroundColor: colors.background }]}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 80 : 0}
     >
@@ -62,15 +63,31 @@ export default function NewRoadmapScreen() {
           keyboardDismissMode="on-drag"
           automaticallyAdjustKeyboardInsets={Platform.OS === 'ios'}
         >
-          <View style={styles.card}>
+          <View
+            style={[
+              styles.card,
+              {
+                backgroundColor: colors.surface,
+                borderColor: colors.border,
+                borderBottomColor: colors.border3d,
+              },
+            ]}
+          >
             <Text style={styles.icon}>🎯</Text>
-            <Text style={styles.heading}>{"What's your next goal?"}</Text>
-            <Text style={styles.subheading}>
+            <Text style={[styles.heading, { color: colors.text }]}>{"What's your next goal?"}</Text>
+            <Text style={[styles.subheading, { color: colors.textMuted }]}>
               {"Give your roadmap an inspiring name. You'll add milestones and steps on the next screen."}
             </Text>
 
             <TextInput
-              style={styles.input}
+              style={[
+                styles.input,
+                {
+                  backgroundColor: colors.surfaceElevated,
+                  borderColor: colors.border,
+                  color: colors.text,
+                },
+              ]}
               placeholder="e.g. Master React Native, Marathon Prep..."
               placeholderTextColor="#94a3b8"
               value={title}
@@ -82,7 +99,14 @@ export default function NewRoadmapScreen() {
 
             <Animated.View style={{ transform: [{ translateY: btnTranslateY }] }}>
               <TouchableOpacity
-                style={[styles.createBtn, !title.trim() && styles.createBtnDisabled]}
+                style={[
+                  styles.createBtn,
+                  {
+                    backgroundColor: colors.success,
+                    borderBottomColor: colors.success3d,
+                  },
+                  !title.trim() && styles.createBtnDisabled,
+                ]}
                 onPressIn={handlePressIn}
                 onPressOut={handlePressOut}
                 onPress={handleCreate}
@@ -102,7 +126,6 @@ export default function NewRoadmapScreen() {
 const styles = StyleSheet.create({
   keyboardAvoidingView: {
     flex: 1,
-    backgroundColor: '#f8fafc',
   },
   scrollView: {
     flex: 1,
@@ -114,16 +137,13 @@ const styles = StyleSheet.create({
     paddingBottom: 60,
   },
   card: {
-    backgroundColor: '#ffffff',
     borderRadius: 20,
     padding: 24,
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
+    borderWidth: 1.5,
     borderBottomWidth: 5,
-    borderBottomColor: '#cbd5e1',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
+    shadowOpacity: 0.1,
     shadowRadius: 10,
     elevation: 3,
     alignItems: 'center',
@@ -136,12 +156,10 @@ const styles = StyleSheet.create({
   heading: {
     fontSize: 22,
     fontWeight: '800',
-    color: '#0f172a',
     textAlign: 'center',
   },
   subheading: {
     fontSize: 14,
-    color: '#64748b',
     textAlign: 'center',
     lineHeight: 20,
     marginBottom: 8,
@@ -149,28 +167,22 @@ const styles = StyleSheet.create({
   input: {
     width: '100%',
     height: 50,
-    borderWidth: 2,
-    borderColor: '#cbd5e1',
+    borderWidth: 1.5,
     borderRadius: 12,
     paddingHorizontal: 16,
     fontSize: 16,
-    backgroundColor: '#f8fafc',
-    color: '#0f172a',
     marginBottom: 8,
   },
   createBtn: {
-    backgroundColor: '#10b981',
     borderRadius: 12,
     paddingVertical: 14,
     paddingHorizontal: 24,
     borderBottomWidth: 4,
-    borderBottomColor: '#059669',
     alignItems: 'center',
     justifyContent: 'center',
   },
   createBtnDisabled: {
-    backgroundColor: '#a7f3d0',
-    borderBottomColor: '#6ee7b7',
+    opacity: 0.5,
   },
   createBtnText: {
     color: '#ffffff',

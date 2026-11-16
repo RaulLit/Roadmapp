@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { useLocalSearchParams, useRouter, useNavigation } from 'expo-router';
 import { useRoadmapStore } from '../../store/useRoadmapStore';
+import { useThemeStore } from '../../store/useThemeStore';
 import { MilestoneTile } from '../../components/MilestoneTile';
 import { PathConnector } from '../../components/PathConnector';
 import { MilestonePopover } from '../../components/MilestonePopover';
@@ -19,6 +20,7 @@ export default function RoadmapDetailScreen() {
   const router = useRouter();
   const navigation = useNavigation();
   const { width: screenWidth } = useWindowDimensions();
+  const { colors } = useThemeStore();
 
   const [selectedMilestoneId, setSelectedMilestoneId] = useState<string | null>(null);
   const [selectedTilePos, setSelectedTilePos] = useState<{
@@ -47,27 +49,30 @@ export default function RoadmapDetailScreen() {
       headerRight: () => (
         <TouchableOpacity
           onPress={() => router.push(`/roadmap/${id}/edit` as any)}
-          style={styles.editHeaderBtn}
+          style={[
+            styles.editHeaderBtn,
+            { backgroundColor: colors.surfaceElevated, borderColor: colors.border },
+          ]}
           activeOpacity={0.7}
         >
-          <Text style={styles.editHeaderBtnText}>Edit</Text>
+          <Text style={[styles.editHeaderBtnText, { color: colors.primary }]}>Edit</Text>
         </TouchableOpacity>
       ),
     });
-  }, [currentRoadmap?.title, id, navigation, router]);
+  }, [colors, currentRoadmap?.title, id, navigation, router]);
 
   if (isLoading && !currentRoadmap) {
     return (
-      <View style={styles.centerContainer}>
-        <ActivityIndicator size="small" color="#2563eb" />
+      <View style={[styles.centerContainer, { backgroundColor: colors.background }]}>
+        <ActivityIndicator size="small" color={colors.primary} />
       </View>
     );
   }
 
   if (!currentRoadmap) {
     return (
-      <View style={styles.centerContainer}>
-        <Text style={styles.emptyText}>Roadmap not found.</Text>
+      <View style={[styles.centerContainer, { backgroundColor: colors.background }]}>
+        <Text style={[styles.emptyText, { color: colors.textMuted }]}>Roadmap not found.</Text>
       </View>
     );
   }
@@ -91,16 +96,19 @@ export default function RoadmapDetailScreen() {
   const totalContentHeight = START_Y + milestones.length * NODE_SPACING_Y + 120;
 
   return (
-    <View style={styles.screenWrapper}>
+    <View style={[styles.screenWrapper, { backgroundColor: colors.background }]}>
       {milestones.length === 0 ? (
         <View style={styles.emptyContainer}>
           <Text style={styles.emptyIcon}>🗺️</Text>
-          <Text style={styles.emptyTitle}>Start Your Journey</Text>
-          <Text style={styles.emptyDescription}>
+          <Text style={[styles.emptyTitle, { color: colors.text }]}>Start Your Journey</Text>
+          <Text style={[styles.emptyDescription, { color: colors.textMuted }]}>
             Build your custom milestones and tasks to explore your interactive Duolingo-style path.
           </Text>
           <TouchableOpacity
-            style={styles.buildBtn}
+            style={[
+              styles.buildBtn,
+              { backgroundColor: colors.primary, borderBottomColor: colors.primary3d },
+            ]}
             activeOpacity={0.8}
             onPress={() => router.push(`/roadmap/${id}/edit` as any)}
           >
@@ -181,7 +189,6 @@ export default function RoadmapDetailScreen() {
 const styles = StyleSheet.create({
   screenWrapper: {
     flex: 1,
-    backgroundColor: '#f8fafc',
   },
   scrollView: {
     flex: 1,
@@ -193,16 +200,13 @@ const styles = StyleSheet.create({
   editHeaderBtn: {
     paddingHorizontal: 14,
     paddingVertical: 6,
-    backgroundColor: '#eff6ff',
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#bfdbfe',
     marginRight: 6,
   },
   editHeaderBtnText: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#2563eb',
   },
   tileAbsoluteContainer: {
     position: 'absolute',
@@ -213,7 +217,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     padding: 32,
-    backgroundColor: '#f8fafc',
   },
   emptyContainer: {
     flex: 1,
@@ -229,24 +232,22 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 22,
     fontWeight: '800',
-    color: '#0f172a',
     textAlign: 'center',
   },
   emptyDescription: {
     fontSize: 14,
-    color: '#64748b',
     textAlign: 'center',
     lineHeight: 21,
     marginBottom: 10,
   },
   buildBtn: {
-    backgroundColor: '#2563eb',
     paddingHorizontal: 24,
     paddingVertical: 14,
     borderRadius: 12,
-    shadowColor: '#2563eb',
+    borderBottomWidth: 4,
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
+    shadowOpacity: 0.2,
     shadowRadius: 8,
     elevation: 4,
   },
@@ -258,6 +259,5 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#64748b',
   },
 });
