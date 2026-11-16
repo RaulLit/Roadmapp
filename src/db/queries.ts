@@ -13,13 +13,15 @@ export function fetchRoadmaps(): Roadmap[] {
     created_at: number;
     milestones_count: number;
     tasks_count: number;
+    completed_tasks_count: number;
   }>(`
     SELECT 
       r.id, 
       r.title, 
       r.created_at,
       (SELECT COUNT(*) FROM milestones m WHERE m.roadmap_id = r.id) as milestones_count,
-      (SELECT COUNT(*) FROM tasks t JOIN milestones m ON t.milestone_id = m.id WHERE m.roadmap_id = r.id) as tasks_count
+      (SELECT COUNT(*) FROM tasks t JOIN milestones m ON t.milestone_id = m.id WHERE m.roadmap_id = r.id) as tasks_count,
+      (SELECT COUNT(*) FROM tasks t JOIN milestones m ON t.milestone_id = m.id WHERE m.roadmap_id = r.id AND t.is_completed = 1) as completed_tasks_count
     FROM roadmaps r
     ORDER BY r.created_at DESC;
   `);
@@ -30,6 +32,7 @@ export function fetchRoadmaps(): Roadmap[] {
     created_at: row.created_at,
     milestones_count: row.milestones_count,
     tasks_count: row.tasks_count,
+    completed_tasks_count: row.completed_tasks_count,
   }));
 }
 
@@ -49,12 +52,18 @@ export function insertRoadmap(title: string): Roadmap {
     created_at: createdAt,
     milestones_count: 0,
     tasks_count: 0,
+    completed_tasks_count: 0,
   };
 }
 
 export function deleteRoadmapById(id: string): void {
   const db = getDatabase();
   db.runSync('DELETE FROM roadmaps WHERE id = ?;', [id]);
+}
+
+export function updateRoadmapTitle(id: string, newTitle: string): void {
+  const db = getDatabase();
+  db.runSync('UPDATE roadmaps SET title = ? WHERE id = ?;', [newTitle.trim(), id]);
 }
 
 export function fetchFullRoadmap(roadmapId: string): FullRoadmap | null {

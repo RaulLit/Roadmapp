@@ -52,6 +52,13 @@ export default function RootLayout() {
             title: 'Edit Roadmap',
           }}
         />
+        <Stack.Screen
+          name="new-roadmap"
+          options={{
+            title: 'New Roadmap',
+            presentation: 'modal',
+          }}
+        />
       </Stack>
     </GestureHandlerRootView>
   );

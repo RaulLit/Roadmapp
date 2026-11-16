@@ -22,6 +22,7 @@ export interface Roadmap {
   created_at: number;
   milestones_count?: number;
   tasks_count?: number;
+  completed_tasks_count?: number;
 }
 
 export interface FullRoadmap extends Roadmap {

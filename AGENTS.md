@@ -39,3 +39,17 @@ Docs: https://docs.expo.dev/eas/index.md
 - If `ios/` and `android/` directories do not exist, they are generated (Continuous Native Generation). Never create or edit them by hand — configure native behavior in `app.json` and config plugins.
 - Expo Go only includes its bundled native modules. After adding a library with native code, the app needs a development build: `npx expo run:ios|android` locally, or `eas build --profile development`.
 - Prefer recommended Expo modules over third-party libraries, and check your available skills before adding dependencies. Docs: https://docs.expo.dev/versions/latest/index.md
+
+## Keyboard Handling & Overlap Prevention (Mandatory Rule)
+
+When building screens with inputs (`TextInput`), the virtual keyboard must NEVER obscure the input field or its action buttons:
+1. **Always wrap screens in `KeyboardAvoidingView`**:
+   - `behavior={Platform.OS === 'ios' ? 'padding' : undefined}`
+   - `keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}` to accommodate navigation headers.
+2. **Always wrap input forms in `ScrollView`**:
+   - `keyboardShouldPersistTaps="handled"` (allows taps on buttons without requiring an extra tap to dismiss the keyboard first).
+   - `keyboardDismissMode="on-drag"`.
+   - `automaticallyAdjustKeyboardInsets={Platform.OS === 'ios'}`.
+3. **Dynamic Padding & Auto-Scroll on Focus**:
+   - Listen to `Keyboard.addListener` (`keyboardWillShow`/`keyboardDidShow` and `keyboardWillHide`/`keyboardDidHide`) to dynamically add `paddingBottom: keyboardHeight > 0 ? keyboardHeight + 80 : 80` to the scroll content container.
+   - For lists of items with inputs (e.g., milestones, tasks), track `onLayout` and trigger `scrollViewRef.current?.scrollTo({ y: Math.max(0, y - 20), animated: true })` inside `onFocus` so the active input is smoothly positioned well above the keyboard.

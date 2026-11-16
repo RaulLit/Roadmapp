@@ -10,6 +10,7 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
+  Keyboard,
 } from 'react-native';
 import { useLocalSearchParams, useRouter, useNavigation } from 'expo-router';
 import { useRoadmapStore } from '../../../store/useRoadmapStore';
@@ -19,19 +20,30 @@ export default function EditRoadmapScreen() {
   const router = useRouter();
   const navigation = useNavigation();
 
-  const [milestoneTitle, setMilestoneTitle] = useState('');
-  const [taskInputs, setTaskInputs] = useState<Record<string, string>>({});
-  const scrollViewRef = useRef<React.ElementRef<typeof ScrollView>>(null);
-
   const {
     currentRoadmap,
     isLoading,
     loadRoadmap,
+    renameRoadmap,
     addMilestone,
     removeMilestone,
     addTask,
     removeTask,
   } = useRoadmapStore();
+
+  const [prevTitle, setPrevTitle] = useState(currentRoadmap?.title);
+  const [roadmapTitle, setRoadmapTitle] = useState(currentRoadmap?.title || '');
+  const [milestoneTitle, setMilestoneTitle] = useState('');
+  const [taskInputs, setTaskInputs] = useState<Record<string, string>>({});
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+
+  if (currentRoadmap && currentRoadmap.title !== prevTitle) {
+    setPrevTitle(currentRoadmap.title);
+    setRoadmapTitle(currentRoadmap.title);
+  }
+
+  const scrollViewRef = useRef<React.ElementRef<typeof ScrollView>>(null);
+  const milestoneLayouts = useRef<Record<string, number>>({});
 
   useEffect(() => {
     if (id) {
@@ -43,12 +55,36 @@ export default function EditRoadmapScreen() {
     navigation.setOptions({
       title: currentRoadmap ? `Edit: ${currentRoadmap.title}` : 'Edit Roadmap',
       headerRight: () => (
-        <TouchableOpacity onPress={() => router.back()} style={styles.doneHeaderBtn}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.doneHeaderBtn} activeOpacity={0.8}>
           <Text style={styles.doneHeaderBtnText}>Done</Text>
         </TouchableOpacity>
       ),
     });
   }, [currentRoadmap, navigation, router]);
+
+  useEffect(() => {
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+
+    const showSub = Keyboard.addListener(showEvent, (e) => {
+      setKeyboardHeight(e.endCoordinates.height);
+    });
+    const hideSub = Keyboard.addListener(hideEvent, () => {
+      setKeyboardHeight(0);
+    });
+
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
+
+  const handleSaveRoadmapTitle = () => {
+    if (!roadmapTitle.trim() || !id) return;
+    if (roadmapTitle.trim() !== currentRoadmap?.title) {
+      renameRoadmap(id, roadmapTitle.trim());
+    }
+  };
 
   const handleAddMilestone = () => {
     if (!milestoneTitle.trim() || !id) return;
@@ -84,6 +120,18 @@ export default function EditRoadmapScreen() {
     removeTask(id, taskId);
   };
 
+  const handleTaskInputFocus = (milestoneId: string) => {
+    const y = milestoneLayouts.current[milestoneId];
+    if (typeof y === 'number') {
+      setTimeout(() => {
+        scrollViewRef.current?.scrollTo({
+          y: Math.max(0, y - 20),
+          animated: true,
+        });
+      }, 100);
+    }
+  };
+
   if (isLoading && !currentRoadmap) {
     return (
       <View style={styles.centerContainer}>
@@ -100,6 +148,9 @@ export default function EditRoadmapScreen() {
     );
   }
 
+  const isTitleModified =
+    roadmapTitle.trim() !== '' && roadmapTitle.trim() !== currentRoadmap.title;
+
   return (
     <KeyboardAvoidingView
       style={styles.keyboardAvoidingView}
@@ -109,13 +160,42 @@ export default function EditRoadmapScreen() {
       <ScrollView
         ref={scrollViewRef}
         style={styles.container}
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[
+          styles.content,
+          { paddingBottom: keyboardHeight > 0 ? keyboardHeight + 80 : 80 },
+        ]}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
         automaticallyAdjustKeyboardInsets={Platform.OS === 'ios'}
       >
+        {/* Rename Roadmap Card */}
+        <View style={styles.card}>
+          <Text style={styles.sectionTitle}>Roadmap Name</Text>
+          <View style={styles.inputRow}>
+            <TextInput
+              style={styles.input}
+              placeholder="Roadmap title..."
+              placeholderTextColor="#94a3b8"
+              value={roadmapTitle}
+              onChangeText={setRoadmapTitle}
+              onBlur={handleSaveRoadmapTitle}
+              onSubmitEditing={handleSaveRoadmapTitle}
+              returnKeyType="done"
+            />
+            {isTitleModified && (
+              <TouchableOpacity
+                style={styles.saveTitleBtn}
+                onPress={handleSaveRoadmapTitle}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.saveTitleBtnText}>Save</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
+
         {/* Add Milestone Card */}
-        <View style={styles.addCard}>
+        <View style={styles.card}>
           <Text style={styles.sectionTitle}>Add New Milestone</Text>
           <View style={styles.inputRow}>
             <TextInput
@@ -131,6 +211,7 @@ export default function EditRoadmapScreen() {
               style={[styles.primaryBtn, !milestoneTitle.trim() && styles.btnDisabled]}
               onPress={handleAddMilestone}
               disabled={!milestoneTitle.trim()}
+              activeOpacity={0.8}
             >
               <Text style={styles.primaryBtnText}>+ Milestone</Text>
             </TouchableOpacity>
@@ -152,7 +233,13 @@ export default function EditRoadmapScreen() {
             const taskInputVal = taskInputs[milestone.id] || '';
 
             return (
-              <View key={milestone.id} style={styles.milestoneBlock}>
+              <View
+                key={milestone.id}
+                style={styles.milestoneBlock}
+                onLayout={(event) => {
+                  milestoneLayouts.current[milestone.id] = event.nativeEvent.layout.y;
+                }}
+              >
                 {/* Milestone Header */}
                 <View style={styles.milestoneHeader}>
                   <View style={styles.milestoneBadgeTitle}>
@@ -194,6 +281,7 @@ export default function EditRoadmapScreen() {
                       onChangeText={(val) =>
                         setTaskInputs((prev) => ({ ...prev, [milestone.id]: val }))
                       }
+                      onFocus={() => handleTaskInputFocus(milestone.id)}
                       onSubmitEditing={() => handleAddTask(milestone.id)}
                       returnKeyType="done"
                     />
@@ -201,6 +289,7 @@ export default function EditRoadmapScreen() {
                       style={[styles.addTaskBtn, !taskInputVal.trim() && styles.btnDisabled]}
                       onPress={() => handleAddTask(milestone.id)}
                       disabled={!taskInputVal.trim()}
+                      activeOpacity={0.8}
                     >
                       <Text style={styles.addTaskBtnText}>+ Task</Text>
                     </TouchableOpacity>
@@ -225,37 +314,38 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: 16,
-    paddingBottom: 60,
     gap: 16,
   },
   doneHeaderBtn: {
-    paddingHorizontal: 12,
+    paddingHorizontal: 14,
     paddingVertical: 6,
     backgroundColor: '#2563eb',
-    borderRadius: 6,
-    marginRight: 8,
+    borderRadius: 8,
+    marginRight: 6,
   },
   doneHeaderBtnText: {
     color: '#ffffff',
     fontSize: 14,
     fontWeight: '700',
   },
-  addCard: {
+  card: {
     backgroundColor: '#ffffff',
-    borderRadius: 12,
+    borderRadius: 14,
     padding: 16,
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: '#e2e8f0',
+    borderBottomWidth: 4,
+    borderBottomColor: '#cbd5e1',
     gap: 10,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
+    shadowRadius: 4,
+    elevation: 2,
   },
   sectionTitle: {
-    fontSize: 13,
-    fontWeight: '700',
+    fontSize: 12,
+    fontWeight: '800',
     color: '#475569',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
@@ -266,49 +356,69 @@ const styles = StyleSheet.create({
   },
   input: {
     flex: 1,
-    height: 42,
-    borderWidth: 1,
+    height: 44,
+    borderWidth: 1.5,
     borderColor: '#cbd5e1',
     borderRadius: 8,
     paddingHorizontal: 12,
     fontSize: 15,
-    backgroundColor: '#ffffff',
+    backgroundColor: '#f8fafc',
     color: '#0f172a',
   },
+  saveTitleBtn: {
+    height: 44,
+    paddingHorizontal: 16,
+    backgroundColor: '#10b981',
+    borderRadius: 8,
+    borderBottomWidth: 3,
+    borderBottomColor: '#059669',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  saveTitleBtnText: {
+    color: '#ffffff',
+    fontSize: 14,
+    fontWeight: '700',
+  },
   primaryBtn: {
-    height: 42,
+    height: 44,
     paddingHorizontal: 16,
     backgroundColor: '#2563eb',
     borderRadius: 8,
+    borderBottomWidth: 3,
+    borderBottomColor: '#1d4ed8',
     justifyContent: 'center',
     alignItems: 'center',
   },
   btnDisabled: {
     backgroundColor: '#93c5fd',
+    borderBottomColor: '#60a5fa',
   },
   primaryBtnText: {
     color: '#ffffff',
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: '700',
   },
   milestonesHeader: {
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: '800',
     color: '#1e293b',
     marginTop: 4,
   },
   emptyCard: {
     backgroundColor: '#ffffff',
     padding: 24,
-    borderRadius: 12,
+    borderRadius: 14,
     alignItems: 'center',
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: '#e2e8f0',
+    borderBottomWidth: 4,
+    borderBottomColor: '#cbd5e1',
     gap: 4,
   },
   emptyCardTitle: {
     fontSize: 15,
-    fontWeight: '600',
+    fontWeight: '700',
     color: '#475569',
   },
   emptyCardSubtitle: {
@@ -318,22 +428,24 @@ const styles = StyleSheet.create({
   },
   milestoneBlock: {
     backgroundColor: '#ffffff',
-    borderRadius: 12,
-    borderWidth: 1,
+    borderRadius: 14,
+    borderWidth: 1.5,
     borderColor: '#e2e8f0',
+    borderBottomWidth: 4,
+    borderBottomColor: '#cbd5e1',
     overflow: 'hidden',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
+    shadowRadius: 4,
+    elevation: 2,
   },
   milestoneHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: 12,
-    backgroundColor: '#f1f5f9',
+    backgroundColor: '#f8fafc',
     borderBottomWidth: 1,
     borderBottomColor: '#e2e8f0',
   },
@@ -364,7 +476,7 @@ const styles = StyleSheet.create({
   },
   deleteMilestoneText: {
     fontSize: 13,
-    fontWeight: '600',
+    fontWeight: '700',
     color: '#ef4444',
   },
   tasksContainer: {
@@ -407,7 +519,7 @@ const styles = StyleSheet.create({
   taskInput: {
     flex: 1,
     height: 38,
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: '#cbd5e1',
     borderRadius: 6,
     paddingHorizontal: 10,
@@ -420,13 +532,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     backgroundColor: '#3b82f6',
     borderRadius: 6,
+    borderBottomWidth: 2,
+    borderBottomColor: '#1d4ed8',
     justifyContent: 'center',
     alignItems: 'center',
   },
   addTaskBtnText: {
     color: '#ffffff',
     fontSize: 13,
-    fontWeight: '600',
+    fontWeight: '700',
   },
   centerContainer: {
     flex: 1,

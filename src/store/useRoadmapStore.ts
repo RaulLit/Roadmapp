@@ -11,6 +11,7 @@ interface RoadmapState {
   loadRoadmaps: () => void;
   loadRoadmap: (id: string) => void;
   addRoadmap: (title: string) => Roadmap | null;
+  renameRoadmap: (id: string, newTitle: string) => void;
   removeRoadmap: (id: string) => void;
 
   addMilestone: (roadmapId: string, title: string) => void;
@@ -57,6 +58,17 @@ export const useRoadmapStore = create<RoadmapState>((set, get) => ({
     } catch (err) {
       set({ error: (err as Error).message });
       return null;
+    }
+  },
+
+  renameRoadmap: (id: string, newTitle: string) => {
+    try {
+      queries.updateRoadmapTitle(id, newTitle);
+      const updated = queries.fetchFullRoadmap(id);
+      const roadmaps = queries.fetchRoadmaps();
+      set({ currentRoadmap: updated, roadmaps });
+    } catch (err) {
+      set({ error: (err as Error).message });
     }
   },
 
