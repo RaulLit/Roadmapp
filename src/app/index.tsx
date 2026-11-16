@@ -1,98 +1,202 @@
-import * as Device from 'expo-device';
-import { Platform, StyleSheet } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useEffect, useState } from 'react';
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  FlatList,
+  StyleSheet,
+  Alert,
+  ActivityIndicator,
+} from 'react-native';
+import { router } from 'expo-router';
+import { useRoadmapStore } from '../store/useRoadmapStore';
+import { Roadmap } from '../db/types';
 
-import { AnimatedIcon } from '@/components/animated-icon';
-import { HintRow } from '@/components/hint-row';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { WebBadge } from '@/components/web-badge';
-import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
+export default function RoadmapsScreen() {
+  const [title, setTitle] = useState('');
+  const { roadmaps, isLoading, loadRoadmaps, addRoadmap, removeRoadmap } = useRoadmapStore();
 
-function getDevMenuHint() {
-  if (Platform.OS === 'web') {
-    return <ThemedText type="small">use browser devtools</ThemedText>;
-  }
-  if (Device.isDevice) {
-    return (
-      <ThemedText type="small">
-        shake device or press <ThemedText type="code">m</ThemedText> in terminal
-      </ThemedText>
+  useEffect(() => {
+    loadRoadmaps();
+  }, [loadRoadmaps]);
+
+  const handleCreate = () => {
+    if (!title.trim()) return;
+    const created = addRoadmap(title.trim());
+    if (created) {
+      setTitle('');
+    }
+  };
+
+  const handleDelete = (id: string, name: string) => {
+    Alert.alert(
+      'Delete Roadmap',
+      `Are you sure you want to delete "${name}"? All associated milestones and tasks will be deleted.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Delete', style: 'destructive', onPress: () => removeRoadmap(id) },
+      ]
     );
-  }
-  const shortcut = Platform.OS === 'android' ? 'cmd+m (or ctrl+m)' : 'cmd+d';
-  return (
-    <ThemedText type="small">
-      press <ThemedText type="code">{shortcut}</ThemedText>
-    </ThemedText>
+  };
+
+  const renderItem = ({ item }: { item: Roadmap }) => (
+    <TouchableOpacity
+      style={styles.card}
+      activeOpacity={0.7}
+      onPress={() => router.push(`/roadmap/${item.id}` as any)}
+    >
+      <View style={styles.cardContent}>
+        <Text style={styles.cardTitle}>{item.title}</Text>
+        <Text style={styles.cardSubtitle}>
+          {item.milestones_count || 0} {item.milestones_count === 1 ? 'milestone' : 'milestones'} •{' '}
+          {item.tasks_count || 0} {item.tasks_count === 1 ? 'task' : 'tasks'}
+        </Text>
+      </View>
+      <TouchableOpacity
+        style={styles.deleteButton}
+        onPress={() => handleDelete(item.id, item.title)}
+        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+      >
+        <Text style={styles.deleteButtonText}>✕</Text>
+      </TouchableOpacity>
+    </TouchableOpacity>
   );
-}
 
-export default function HomeScreen() {
   return (
-    <ThemedView style={styles.container}>
-      <SafeAreaView style={styles.safeArea}>
-        <ThemedView style={styles.heroSection}>
-          <AnimatedIcon />
-          <ThemedText type="title" style={styles.title}>
-            Welcome to&nbsp;Expo
-          </ThemedText>
-        </ThemedView>
+    <View style={styles.container}>
+      {/* Create Roadmap Input Section */}
+      <View style={styles.createBox}>
+        <TextInput
+          style={styles.input}
+          placeholder="New roadmap name..."
+          placeholderTextColor="#9ca3af"
+          value={title}
+          onChangeText={setTitle}
+          onSubmitEditing={handleCreate}
+          returnKeyType="done"
+        />
+        <TouchableOpacity
+          style={[styles.addButton, !title.trim() && styles.addButtonDisabled]}
+          onPress={handleCreate}
+          disabled={!title.trim()}
+        >
+          <Text style={styles.addButtonText}>Add</Text>
+        </TouchableOpacity>
+      </View>
 
-        <ThemedText type="code" style={styles.code}>
-          get started
-        </ThemedText>
-
-        <ThemedView type="backgroundElement" style={styles.stepContainer}>
-          <HintRow
-            title="Try editing"
-            hint={<ThemedText type="code">src/app/index.tsx</ThemedText>}
-          />
-          <HintRow title="Dev tools" hint={getDevMenuHint()} />
-          <HintRow
-            title="Fresh start"
-            hint={<ThemedText type="code">npm run reset-project</ThemedText>}
-          />
-        </ThemedView>
-
-        {Platform.OS === 'web' && <WebBadge />}
-      </SafeAreaView>
-    </ThemedView>
+      {/* Roadmaps List */}
+      {isLoading && roadmaps.length === 0 ? (
+        <View style={styles.centerContainer}>
+          <ActivityIndicator size="small" color="#2563eb" />
+        </View>
+      ) : roadmaps.length === 0 ? (
+        <View style={styles.centerContainer}>
+          <Text style={styles.emptyText}>No roadmaps created yet.</Text>
+          <Text style={styles.emptySubtext}>Type a name above to create your first roadmap.</Text>
+        </View>
+      ) : (
+        <FlatList
+          data={roadmaps}
+          keyExtractor={(item) => item.id}
+          renderItem={renderItem}
+          contentContainerStyle={styles.list}
+        />
+      )}
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: 'center',
+    backgroundColor: '#f3f4f6',
+  },
+  createBox: {
     flexDirection: 'row',
+    padding: 16,
+    backgroundColor: '#ffffff',
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#e5e7eb',
+    gap: 8,
   },
-  safeArea: {
+  input: {
     flex: 1,
-    paddingHorizontal: Spacing.four,
-    alignItems: 'center',
-    gap: Spacing.three,
-    paddingBottom: BottomTabInset + Spacing.three,
-    maxWidth: MaxContentWidth,
+    height: 44,
+    borderWidth: 1,
+    borderColor: '#d1d5db',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    fontSize: 16,
+    backgroundColor: '#ffffff',
+    color: '#111827',
   },
-  heroSection: {
-    alignItems: 'center',
+  addButton: {
+    height: 44,
+    paddingHorizontal: 20,
+    backgroundColor: '#2563eb',
+    borderRadius: 8,
     justifyContent: 'center',
+    alignItems: 'center',
+  },
+  addButtonDisabled: {
+    backgroundColor: '#93c5fd',
+  },
+  addButtonText: {
+    color: '#ffffff',
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  list: {
+    padding: 16,
+    gap: 12,
+  },
+  card: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#ffffff',
+    padding: 16,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+  },
+  cardContent: {
     flex: 1,
-    paddingHorizontal: Spacing.four,
-    gap: Spacing.four,
   },
-  title: {
+  cardTitle: {
+    fontSize: 17,
+    fontWeight: '600',
+    color: '#111827',
+  },
+  cardSubtitle: {
+    fontSize: 13,
+    color: '#6b7280',
+    marginTop: 4,
+  },
+  deleteButton: {
+    padding: 8,
+    marginLeft: 8,
+  },
+  deleteButtonText: {
+    fontSize: 16,
+    color: '#ef4444',
+    fontWeight: 'bold',
+  },
+  centerContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 32,
+  },
+  emptyText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#4b5563',
+    marginBottom: 4,
+  },
+  emptySubtext: {
+    fontSize: 14,
+    color: '#9ca3af',
     textAlign: 'center',
-  },
-  code: {
-    textTransform: 'uppercase',
-  },
-  stepContainer: {
-    gap: Spacing.three,
-    alignSelf: 'stretch',
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.four,
-    borderRadius: Spacing.four,
   },
 });
