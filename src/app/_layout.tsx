@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { Stack } from 'expo-router';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { StyleSheet } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
 import { getDatabase } from '../db/database';
 
@@ -20,6 +21,7 @@ export default function RootLayout() {
 
   return (
     <GestureHandlerRootView style={styles.container}>
+      <StatusBar style="dark" />
       <Stack
         screenOptions={{
           headerStyle: {

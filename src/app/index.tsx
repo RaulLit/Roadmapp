@@ -10,11 +10,13 @@ import {
   Animated,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRoadmapStore } from '../store/useRoadmapStore';
 import { Roadmap } from '../db/types';
 
 export default function RoadmapsScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { roadmaps, isLoading, loadRoadmaps, removeRoadmap } = useRoadmapStore();
   const [fabTranslateY] = useState(() => new Animated.Value(0));
 
@@ -179,7 +181,10 @@ export default function RoadmapsScreen() {
       ) : (
         <ScrollView
           style={styles.scrollView}
-          contentContainerStyle={styles.scrollContent}
+          contentContainerStyle={[
+            styles.scrollContent,
+            { paddingBottom: Math.max(insets.bottom, 16) + 90 },
+          ]}
           showsVerticalScrollIndicator={false}
         >
           {/* Section 1: In Progress */}
@@ -236,7 +241,15 @@ export default function RoadmapsScreen() {
       )}
 
       {/* Floating Action Button (FAB) */}
-      <Animated.View style={[styles.fabContainer, { transform: [{ translateY: fabTranslateY }] }]}>
+      <Animated.View
+        style={[
+          styles.fabContainer,
+          {
+            bottom: Math.max(insets.bottom, 16) + 16,
+            transform: [{ translateY: fabTranslateY }],
+          },
+        ]}
+      >
         <TouchableOpacity
           style={styles.fab}
           onPressIn={handleFabPressIn}
@@ -387,7 +400,6 @@ const styles = StyleSheet.create({
   },
   fabContainer: {
     position: 'absolute',
-    bottom: 24,
     right: 20,
     zIndex: 99,
   },
